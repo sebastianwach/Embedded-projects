@@ -35,10 +35,7 @@
 /* USER CODE BEGIN PD */
 #define WS2812B_LEDS 30
 
-/*
- #define zero 0b1000000
- #define one 0b11100000
- */
+
 #define zero 0b1000000
 #define one 0b1111000
 /* USER CODE END PD */
@@ -276,12 +273,10 @@ int main(void)
   MX_SPI2_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
-
-	lcd_init();
-	lcd_send_string("MODE");
-
-	HAL_Delay(500);
+  HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
+  lcd_init();
+  lcd_send_string("MODE");
+  HAL_Delay(500);
 
   /* USER CODE END 2 */
  
