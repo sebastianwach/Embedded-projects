@@ -64,10 +64,13 @@ static uint8_t buffer[WS2812B_LEDS * 24 + 48];				// buffer with this length
 uint16_t CurrentLed;
 
 uint8_t state; 												// state of inbuilt button
-uint16_t encoderValue = 0;									// encoderValue [0 - 80]
+uint8_t encoderValue = 0;									// encoderValue [0 - 80]
+uint8_t encoderPreviousValue = 0;
+uint8_t encoderDifference = 0;
 static uint16_t globalCounter = 0;							// global counter to change values depend from time
 uint8_t mode = 0;											// selected LED mode
-uint8_t modeMax = 3;										// number of modes in application
+uint8_t modeMax = 4;										// number of modes in application
+uint8_t brightness = 255;
 
 /* USER CODE END PV */
 
@@ -94,7 +97,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			}
 		}
 	}
-
 }
 
 
@@ -211,7 +213,7 @@ void WS2812B_RainbowMode(uint8_t encSpeed) {
 	globalCounter++;
 	for (int i = 0; i < WS2812B_LEDS; i++) {
 
-		WS2812B_SetDiodeHSV(i, (i * 12 + globalCounter) % 360, 255, 255);
+		WS2812B_SetDiodeHSV(i, (i * 12 + globalCounter) % 360, 255, brightness);
 	}
 	WS2812B_RefreshStrip();
 	HAL_Delay(encSpeed);
@@ -220,16 +222,28 @@ void WS2812B_RainbowMode(uint8_t encSpeed) {
 void WS2812B_EncoderMode(uint16_t encHue, uint16_t encMaxValue) {
 	for (int i = 0; i < WS2812B_LEDS; i++) {
 
-		WS2812B_SetDiodeHSV(i, ((360 / encMaxValue) * encHue) % 360, 255, 255);
+		WS2812B_SetDiodeHSV(i, ((360 / encMaxValue) * encHue) % 360, 255, brightness);
 	}
 	WS2812B_RefreshStrip();
 }
+void ChangeBrightness(uint8_t encValue) {
+	brightness = encValue;
+}
 
-void lcd_print_enc_value(uint16_t encValue, uint8_t row, uint8_t col) {
-	lcd_put_cur(row, col);
-	lcd_send_data(((encoderValue / 10) % 10) + 48);
-	lcd_put_cur(row, col + 1);
-	lcd_send_data(encoderValue % 10 + 48);
+void lcd_print_enc_value(uint8_t encValue, uint8_t row, uint8_t col) {
+	if ( encValue >= 100)
+	{
+		lcd_put_cur(row, col);
+		lcd_send_data(((encValue / 100) % 10) + 48);
+	}else
+	{
+		lcd_put_cur(row, col);
+		lcd_send_data(32);  //just print space, not '0'
+	}
+	lcd_put_cur(row, col+1);
+	lcd_send_data(((encValue / 10) % 10) + 48);
+	lcd_put_cur(row, col + 2);
+	lcd_send_data(encValue % 10 + 48);
 }
 
 /* USER CODE END PFP */
@@ -287,6 +301,11 @@ int main(void)
 	while (1) {
 
 		encoderValue = htim1.Instance->CNT;
+		encoderDifference = encoderValue - encoderPreviousValue;
+		if(abs(encoderDifference)> 10)
+		{
+			encoderDifference = 0;
+		}
 
 		switch (mode) {
 		case 0:
@@ -294,26 +313,35 @@ int main(void)
 			lcd_send_string("Rainbow     ");
 			lcd_print_enc_value(encoderValue, 1, 12);
 			WS2812B_RainbowMode(encoderValue);
-
 			break;
+
 		case 1:
 			lcd_put_cur(1, 0);
 			lcd_send_string("Round pixel");
 			lcd_print_enc_value(encoderValue, 1, 12);
 			WS2812B_OnePixelRoundMode(encoderValue, 255, 255, 255);
-
 			break;
+
 		case 2:
 			lcd_put_cur(1, 0);
 			lcd_send_string("Encoder    ");
 			lcd_print_enc_value(encoderValue, 1, 12);
 			WS2812B_EncoderMode(encoderValue, 80);
-
 			break;
+
+		case 3:
+			lcd_put_cur(1, 0);
+			lcd_send_string("Brightness");
+			brightness += encoderDifference;
+			lcd_print_enc_value(brightness, 1, 12);
+			WS2812B_EncoderMode(encoderValue, 80);
+			break;
+
 		default:
 
 			break;
 		}
+		encoderPreviousValue = encoderValue;
 
     /* USER CODE END WHILE */
 
